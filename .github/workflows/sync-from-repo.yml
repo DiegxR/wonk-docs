@@ -3,8 +3,9 @@ name: sync-from-repo
 # Recibe el aviso de los repos de código (repository_dispatch wonk-docs-sync),
 # arma el manifiesto, deja que el agente decida (casos A-D) y abre un PR con
 # la etiqueta needs-review. Nunca escribe directo en main.
-# La versión sin API key corre en dry-run: publica el manifiesto como PR de
-# prueba para validar el disparador de punta a punta.
+# La versión sin API key corre en dry-run: el simulador (sin IA) aplica
+# cambios deterministas en runtime/ y los lista como "se creó/actualizó el
+# archivo X" en el PR de prueba.
 
 on:
   repository_dispatch:
@@ -115,27 +116,12 @@ jobs:
             --max-turns 25
             --allowedTools Read,Write,Edit,Glob,Grep,Bash(ls:*),Bash(mkdir:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)
 
-      - name: "Dry-run: publicar manifiesto en runtime/"
+      - name: "Dry-run: simular documentación en runtime/"
         if: steps.manifest.outputs.case != 'A' && steps.agente.outputs.dry_run == 'true'
         env:
           SOURCE_REPO: ${{ steps.manifest.outputs.source_repo }}
           CASE: ${{ steps.manifest.outputs.case }}
-        run: |
-          NAME="${SOURCE_REPO##*/}"
-          mkdir -p "runtime/$NAME/_dryrun"
-          {
-            echo "---"
-            echo "titulo: manifiesto dry-run caso $CASE"
-            echo "fuente_repo: $SOURCE_REPO"
-            echo "commit_verificado: ${{ steps.manifest.outputs.sha }}"
-            echo "estado: borrador"
-            echo "generado_por: dry-run (sin API key)"
-            echo "corrida: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo "---"
-            echo ""
-            cat _run/manifest.md
-          } > "runtime/$NAME/_dryrun/manifest.md"
-          echo "manifiesto escrito en runtime/$NAME/_dryrun/manifest.md"
+        run: python .github/scripts/simulate_docs.py --repo-root . --out-dir _run
 
       - name: Abrir PR needs-review
         if: steps.manifest.outputs.case != 'A' && steps.manifest.outputs.open_pr == 'true'
@@ -197,6 +183,10 @@ jobs:
           - Corrida: $RUN_URL
 
           $NOTE
+
+          ## Acciones simuladas (sin IA)
+
+          $(cat _run/actions.txt 2>/dev/null || echo "(ninguna)")
 
           Checklist de revisión:
           - [ ] Las páginas nuevas o modificadas solo están en \`runtime/\`

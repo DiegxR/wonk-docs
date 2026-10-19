@@ -11,14 +11,18 @@ llegue hasta el paso del modelo en `wonk-docs`, sin API key todavía.
    repository secret:
    - `WONK_DOCS_TOKEN`: PAT clasic con alcance `repo` (permite llamar a la API
      de `wonk-docs`; el `GITHUB_TOKEN` del repo no cruza repositorios).
+     Es el único secreto obligatorio para probar la tuberia de punta a punta.
 4. En `wonk-docs`: crear los secretos:
-   - `AGENT_READ_TOKEN`: PAT de solo lectura sobre los repos de código (lo usa
+   - `AGENT_READ_TOKEN`: PAT de solo lectura sobre los repos de codigo (lo usa
      el manifiesto y el barrido para comparar commits). Opcional mientras los
-     dos repos sean públicos: si falta, se usa `GITHUB_TOKEN`.
-   - `ANTHROPIC_API_KEY`: todavía no existe; su ausencia activa el dry-run.
-5. En `wonk-docs`: Settings > Pages > Source = GitHub Actions.
+     dos repos sean publicos: si falta, se usa `GITHUB_TOKEN` (y la API publica
+     alcanza para repos publicos, con limite de tasa).
+   - `ANTHROPIC_API_KEY`: todavia no existe; su ausencia activa el modo
+     simulacion (sin IA): el clasificador corre igual y un simulador
+     determinista aplica los cambios de documentacion en `runtime/`.
+5. En `wonk-docs`: Settings > Pages > Source = GitHub Actions (ya habilitado).
 
-## Caso B (el camino feliz)
+## Caso B (el camino feliz, con simulación sin IA)
 
 1. En `wonk-pilot`, modificar `src/pilot/app.py` y subir a `main`.
 2. Verificar en Actions de `wonk-pilot`:
@@ -27,12 +31,26 @@ llegue hasta el paso del modelo en `wonk-docs`, sin API key todavía.
 3. Verificar en Actions de `wonk-docs`:
    - `sync-from-repo` aparece solo, sin que nadie lo lance.
    - Paso "Construir manifiesto": `caso B: rutas cambiadas cubiertas...`.
-   - Paso "Sin API key": avisa dry-run.
+   - Paso "Sin API key": avisa modo simulación.
+   - Paso "Simular documentación": imprime avisos
+     `se actualizó el archivo runtime/wonk-pilot/arquitectura.md ...`.
    - Paso "Abrir PR": deja un PR `[dry-run]` con etiquetas
      `needs-review` y `dry-run`.
-4. Revisar el PR: el manifiesto completo está en
-   `runtime/wonk-pilot/_dryrun/manifest.md`.
-5. Cerrar el PR sin fusionar (es una prueba).
+4. Revisar el PR: las páginas afectadas en `runtime/` subieron su
+   `commit_verificado` al SHA nuevo y llevan `generado_por: simulacion`; el
+   cuerpo del PR lista cada acción ("se creó/actualizó el archivo X"). El
+   manifiesto completo queda como artefacto de la corrida.
+5. Cerrar el PR sin fusionar (es una prueba; el merge real se reserva para el
+   agente con API key).
+
+### Qué se ve por cada caso (simulación)
+
+| Caso | Acción simulada visible en el PR |
+| --- | --- |
+| A | Sin PR: "documentación al día" en el log |
+| B | "se actualizó el archivo runtime/... (casos B)" |
+| C | "se marcó como desactualizado el archivo runtime/..." |
+| D | "se creó el archivo runtime/.../<ruta-nueva>.md (stub)" |
 
 ## Caso A (que no dispare)
 
