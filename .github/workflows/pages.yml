@@ -1,0 +1,63 @@
+name: pages
+
+# Publica el sitio MkDocs (vitrina humana) en GitHub Pages.
+# wiki/ es lo curado; runtime/ es lo que genera el agente. Ambos se republican
+# al fusionar un PR a main.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wiki/**"
+      - "runtime/**"
+      - "adr/**"
+      - "mkdocs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: mkdocs build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar MkDocs Material
+        run: pip install mkdocs-material
+
+      - name: Preparar staging (docs/)
+        run: python scripts/prepare_site.py
+
+      - name: Construir sitio
+        run: mkdocs build --site-dir site
+
+      - name: Subir artefacto de Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: desplegar
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar a GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

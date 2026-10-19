@@ -1,0 +1,49 @@
+site_name: Wonk Docs
+site_description: Documentación transversal de Wonk, mantenida viva por la tubería de documentación dinámica
+site_url: https://getwonk.github.io/wonk-docs/
+repo_url: https://github.com/GetWonk/wonk-docs
+edit_uri: ""
+
+docs_dir: docs
+site_dir: site
+
+exclude_docs: |
+  _dryrun/
+  README.md
+
+theme:
+  name: material
+  language: es
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+
+nav:
+  - Inicio: wiki/index.md
+  - Arquitectura:
+      - Visión transversal: wiki/arquitectura/overview.md
+  - Repositorios:
+      - wonk-pilot: wiki/repos/wonk-pilot.md
+  - Runbooks:
+      - Prueba del disparador: wiki/runbooks/runbook-sincronizacion.md
+  - Runtime (generado):
+      - wonk-pilot:
+          - Visión general: runtime/wonk-pilot/vision-general.md
+          - Arquitectura: runtime/wonk-pilot/arquitectura.md
+          - Cómo correr: runtime/wonk-pilot/como-correr.md
+          - Cómo probar: runtime/wonk-pilot/como-probar.md
+          - Contratos: runtime/wonk-pilot/contratos.md
+  - Decisiones:
+      - 0001 Documentación dinámica: adr/0001-documentacion-dinamica.md

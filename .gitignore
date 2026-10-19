@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+site/
+docs/
+_run/
+.pytest_cache/
+.coverage
+coverage.xml
+*.log
+payload.json

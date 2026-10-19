@@ -1,0 +1,10 @@
+{
+  "name": "wonk-docs",
+  "type": "documentation",
+  "source": true,
+  "paths": ["wiki/", "runtime/", "adr/", "raw/"],
+  "format": "markdown",
+  "frontmatter": true,
+  "canonical_urls": "github-blob-sha",
+  "notes": "Fuente de documentación transversal de Wonk para GBrain. Indexa markdown, no código: la referencia al código la dan los permalinks blob/<sha>."
+}

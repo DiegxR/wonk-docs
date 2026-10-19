@@ -1,0 +1,65 @@
+name: drift-check
+
+# Red de seguridad (hoja de ruta, paso 8): barrido semanal sin IA que compara
+# commit_verificado con el HEAD de cada repo fuente y abre un issue con lo que
+# quedó viejo, por si algún cambio no disparó nada.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    name: Barrido de desfase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wonk-docs
+        uses: actions/checkout@v5
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Escanear commit_verificado vs HEAD
+        id: drift
+        env:
+          AGENT_READ_TOKEN: ${{ secrets.AGENT_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/drift_scan.py --repo-root . --out-dir _run
+
+      - name: Publicar informe
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-${{ github.run_id }}
+          path: _run/
+          retention-days: 30
+
+      - name: Imprimir informe
+        run: cat _run/drift.md
+
+      - name: Abrir o actualizar el issue
+        if: steps.drift.outputs.stale != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh label create docs-drift --color B60205 --description "Desfase detectado por el barrido semanal" --force || true
+          TITLE="Barrido semanal: ${{ steps.drift.outputs.stale }} páginas desactualizadas"
+          EXISTING=$(gh issue list --state open --label docs-drift --json number -q '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file _run/drift.md
+            echo "::notice::Issue #$EXISTING actualizado con el informe."
+          else
+            gh issue create --title "$TITLE" --label docs-drift --body-file _run/drift.md
+          fi
+
+      - name: Sin desfase
+        if: steps.drift.outputs.stale == '0'
+        run: |
+          echo "::notice::Sin desfase: todas las páginas documentadas siguen ancladas a un commit válido."

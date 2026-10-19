@@ -1,0 +1,228 @@
+name: sync-from-repo
+
+# Recibe el aviso de los repos de código (repository_dispatch wonk-docs-sync),
+# arma el manifiesto, deja que el agente decida (casos A-D) y abre un PR con
+# la etiqueta needs-review. Nunca escribe directo en main.
+# La versión sin API key corre en dry-run: publica el manifiesto como PR de
+# prueba para validar el disparador de punta a punta.
+
+on:
+  repository_dispatch:
+    types: [wonk-docs-sync]
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Repo fuente (owner/nombre)"
+        required: true
+        default: GetWonk/wonk-pilot
+      sha:
+        description: "SHA nuevo (vacío = HEAD de la rama principal)"
+        required: false
+        default: ""
+      before:
+        description: "SHA anterior (opcional, para comparar rangos)"
+        required: false
+        default: ""
+      files:
+        description: 'JSON [{"status":"M","path":"...","old_path":null}] (vacío = API)'
+        required: false
+        default: ""
+      diff:
+        description: "Diff en texto (opcional)"
+        required: false
+        default: ""
+      open_pr:
+        description: "Abrir PR con el resultado"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+concurrency:
+  group: docs-sync-${{ github.event.client_payload.source_repo || github.event.inputs.source_repo }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Manifiesto -> agente -> PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wonk-docs
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Construir manifiesto y clasificar (A-D)
+        id: manifest
+        env:
+          AGENT_READ_TOKEN: ${{ secrets.AGENT_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/build_manifest.py --repo-root . --out-dir _run
+
+      - name: Publicar manifiesto como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifiesto-${{ github.run_id }}
+          path: _run/
+          retention-days: 7
+
+      - name: "Caso A: documentación al día"
+        if: steps.manifest.outputs.case == 'A'
+        run: |
+          echo "::notice::Caso A (${{ steps.manifest.outputs.reason }}). Sin PR, se evita el ruido."
+          cat _run/manifest.md
+
+      - name: ¿Hay API key del agente?
+        id: agente
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::API key presente: correrá el agente real (claude-code-action)."
+          else
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Sin ANTHROPIC_API_KEY: dry-run. Se publica el manifiesto como PR de prueba."
+          fi
+
+      - name: "Agente real (claude-code-action)"
+        if: steps.manifest.outputs.case != 'A' && steps.agente.outputs.dry_run == 'false'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Aplica estrictamente el contrato de .github/prompts/sync-agent.md.
+
+            Manifiesto de esta corrida: _run/manifest.md (estructurado: _run/manifest.json).
+            Repo fuente: ${{ steps.manifest.outputs.source_repo }}
+            SHA nuevo: ${{ steps.manifest.outputs.sha }}
+            Clasificación preliminar: ${{ steps.manifest.outputs.case }} (${{ steps.manifest.outputs.reason }})
+
+            Trabaja solo sobre runtime/. No toques wiki/, CLAUDE.md, mkdocs.yml ni .github/.
+            No hagas commit ni abras PR: el workflow se encarga del git y del PR.
+          claude_args: |
+            --max-turns 25
+            --allowedTools Read,Write,Edit,Glob,Grep,Bash(ls:*),Bash(mkdir:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*)
+
+      - name: "Dry-run: publicar manifiesto en runtime/"
+        if: steps.manifest.outputs.case != 'A' && steps.agente.outputs.dry_run == 'true'
+        env:
+          SOURCE_REPO: ${{ steps.manifest.outputs.source_repo }}
+          CASE: ${{ steps.manifest.outputs.case }}
+        run: |
+          NAME="${SOURCE_REPO##*/}"
+          mkdir -p "runtime/$NAME/_dryrun"
+          {
+            echo "---"
+            echo "titulo: manifiesto dry-run caso $CASE"
+            echo "fuente_repo: $SOURCE_REPO"
+            echo "commit_verificado: ${{ steps.manifest.outputs.sha }}"
+            echo "estado: borrador"
+            echo "generado_por: dry-run (sin API key)"
+            echo "corrida: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "---"
+            echo ""
+            cat _run/manifest.md
+          } > "runtime/$NAME/_dryrun/manifest.md"
+          echo "manifiesto escrito en runtime/$NAME/_dryrun/manifest.md"
+
+      - name: Abrir PR needs-review
+        if: steps.manifest.outputs.case != 'A' && steps.manifest.outputs.open_pr == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REPO: ${{ steps.manifest.outputs.source_repo }}
+          SHA: ${{ steps.manifest.outputs.sha }}
+          CASE: ${{ steps.manifest.outputs.case }}
+          REASON: ${{ steps.manifest.outputs.reason }}
+          CANDIDATES: ${{ steps.manifest.outputs.candidates }}
+          DRY_RUN: ${{ steps.agente.outputs.dry_run }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          NAME="${SOURCE_REPO##*/}"
+          SHORT="${SHA:0:8}"
+
+          git config user.name "wonk-docs-bot"
+          git config user.email "wonk-docs-bot@users.noreply.github.com"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            BRANCH="bot/docs-sync/dryrun-$NAME"
+            TITLE="[dry-run] docs($NAME): manifiesto caso $CASE ($SHORT)"
+          else
+            BRANCH="bot/docs-sync/$NAME-$SHORT"
+            TITLE="docs($NAME): actualización automática desde $SHORT"
+          fi
+
+          # Red de seguridad: el agente solo puede tocar runtime/
+          OUTSIDE=$(git status --porcelain | awk '{print $NF}' | grep -v '^runtime/' || true)
+          if [ -n "$OUTSIDE" ]; then
+            echo "::error::Cambios fuera de runtime/ (prohibido): $OUTSIDE"
+            exit 1
+          fi
+
+          git add -A runtime
+          if git diff --cached --quiet; then
+            echo "::notice::Nada que commitear en runtime/. No se abre PR."
+            exit 0
+          fi
+
+          git checkout -B "$BRANCH"
+          git commit -m "docs($NAME): sincronización automática desde $SHORT"
+          git push --force origin "$BRANCH"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            NOTE="**Modo dry-run:** todavía no hay API key del agente, así que este PR solo publica el manifiesto y la clasificación. Ciérralo sin fusionar cuando termines la prueba."
+          else
+            NOTE="Generado por el agente (claude-code-action) a partir del manifiesto de la corrida."
+          fi
+
+          cat > /tmp/pr_body.md <<EOF
+          ## Sincronización de documentación
+
+          - Repo fuente: \`$SOURCE_REPO\`
+          - SHA documentado: \`$SHA\`
+          - Clasificación: **caso $CASE** — $REASON
+          - Páginas candidatas: ${CANDIDATES:-ninguna}
+          - Corrida: $RUN_URL
+
+          $NOTE
+
+          Checklist de revisión:
+          - [ ] Las páginas nuevas o modificadas solo están en \`runtime/\`
+          - [ ] \`commit_verificado\` coincide con \`$SHA\`
+          - [ ] Los permalinks usan \`blob/$SHA\`, nunca \`blob/main\`
+          - [ ] Ninguna página contradice el código
+          EOF
+          sed -i 's/^          //' /tmp/pr_body.md
+
+          gh label create needs-review --color FBCA04 --description "Revisión humana obligatoria" --force || true
+          gh label create dry-run --color D4C5F9 --description "Prueba del disparador sin agente" --force || true
+
+          LABELS="--label needs-review"
+          if [ "$DRY_RUN" = "true" ]; then LABELS="$LABELS --label dry-run"; fi
+
+          if URL=$(gh pr create --base main --head "$BRANCH" --title "$TITLE" --body-file /tmp/pr_body.md $LABELS 2>/tmp/pr_err.txt); then
+            echo "::notice::PR abierto: $URL"
+            echo "pr_url=$URL" >> "$GITHUB_OUTPUT"
+          else
+            EXISTING=$(gh pr view "$BRANCH" --json url -q .url 2>/dev/null || true)
+            if [ -n "$EXISTING" ]; then
+              echo "::notice::El PR ya existía y fue actualizado: $EXISTING"
+              echo "pr_url=$EXISTING" >> "$GITHUB_OUTPUT"
+            else
+              cat /tmp/pr_err.txt || true
+              echo "::error::No se pudo abrir el PR"
+              exit 1
+            fi
+          fi
