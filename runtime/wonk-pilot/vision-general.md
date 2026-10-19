@@ -1,11 +1,11 @@
 ---
 titulo: Visión general de wonk-pilot
-fuente_repo: GetWonk/wonk-pilot
+fuente_repo: DiegxR/wonk-pilot
 rutas:
   - README.md
   - pyproject.toml
 commit_verificado: 0000000
-permalink_base: https://github.com/GetWonk/wonk-pilot/blob/0000000
+permalink_base: https://github.com/DiegxR/wonk-pilot/blob/0000000
 ultima_revision: 2026-10-18
 estado: borrador
 generado_por: manual

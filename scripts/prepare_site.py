@@ -29,6 +29,13 @@ def main() -> int:
         shutil.copytree(src, docs / name,
                         ignore=shutil.ignore_patterns("_dryrun", "__pycache__"))
         copied += sum(1 for _ in (docs / name).rglob("*") if _.is_file())
+    # Landing en la raíz: MkDocs sirve docs/index.md como /index.html.
+    root_index = docs / "wiki" / "index.md"
+    if root_index.exists():
+        (docs / "index.md").write_text(
+            "# Wonk Docs\n\nIr a la [página de inicio](wiki/index.md).\n",
+            encoding="utf-8",
+        )
     print(f"staging listo: docs/ con {copied} archivos")
     return 0
 

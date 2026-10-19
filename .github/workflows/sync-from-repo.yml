@@ -14,7 +14,7 @@ on:
       source_repo:
         description: "Repo fuente (owner/nombre)"
         required: true
-        default: GetWonk/wonk-pilot
+        default: DiegxR/wonk-pilot
       sha:
         description: "SHA nuevo (vacío = HEAD de la rama principal)"
         required: false

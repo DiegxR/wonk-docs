@@ -49,12 +49,12 @@ wonk-docs/
 
 ```yaml
 ---
-fuente_repo: GetWonk/wonk-2          # repo del que sale esta página
+fuente_repo: DiegxR/wonk-2            # repo del que sale esta página
 rutas:                               # archivos que esta página documenta
   - src/wonk2/app/routers/auth.py#L42-L88
   - src/wonk2/app/services/auth_base.py#L1-L30
 commit_verificado: a1b2c3d           # SHA del commit que se documentó (ancla de frescura)
-permalink_base: https://github.com/GetWonk/wonk-2/blob/a1b2c3d
+permalink_base: https://github.com/DiegxR/wonk-2/blob/a1b2c3d
 ultima_revision: 2026-10-14
 estado: verificado                   # verificado | desactualizado | borrador
 generado_por: claude-code-action     # o "manual"

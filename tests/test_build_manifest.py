@@ -9,7 +9,7 @@ import build_manifest as bm  # noqa: E402
 
 ARQUITECTURA = """---
 titulo: Arquitectura
-fuente_repo: GetWonk/wonk-pilot
+fuente_repo: DiegxR/wonk-pilot
 rutas:
   - src/pilot/app.py
   - src/pilot/__init__.py
@@ -21,7 +21,7 @@ estado: verificado
 
 CONTRATOS = """---
 titulo: Contratos
-fuente_repo: GetWonk/wonk-pilot
+fuente_repo: DiegxR/wonk-pilot
 rutas:
   - src/pilot/calculo.py#L1-L30
 commit_verificado: abc1234
@@ -32,7 +32,7 @@ estado: verificado
 
 COMO_PROBAR = """---
 titulo: Como probar
-fuente_repo: GetWonk/wonk-pilot
+fuente_repo: DiegxR/wonk-pilot
 rutas:
   - tests/test_calculo.py
 commit_verificado: abc1234
@@ -43,7 +43,7 @@ estado: verificado
 
 
 def payload(files, diff=""):
-    return {"source_repo": "GetWonk/wonk-pilot", "sha": "d" * 40, "before": "a" * 40,
+    return {"source_repo": "DiegxR/wonk-pilot", "sha": "d" * 40, "before": "a" * 40,
             "files": files, "diff": diff, "source_docs": {}}
 
 
@@ -57,7 +57,7 @@ class TestFrontmatter(unittest.TestCase):
             p = Path(tmp) / "page.md"
             p.write_text(ARQUITECTURA, encoding="utf-8")
             data = bm.parse_frontmatter(p)
-        self.assertEqual(data["fuente_repo"], "GetWonk/wonk-pilot")
+        self.assertEqual(data["fuente_repo"], "DiegxR/wonk-pilot")
         self.assertEqual(data["rutas"], ["src/pilot/app.py", "src/pilot/__init__.py"])
         self.assertEqual(data["commit_verificado"], "abc1234")
 
@@ -69,7 +69,7 @@ class TestFrontmatter(unittest.TestCase):
                 ARQUITECTURA, encoding="utf-8")
             (root / "runtime" / "wonk-pilot" / "contratos.md").write_text(
                 CONTRATOS.replace("wonk-pilot", "otro-repo"), encoding="utf-8")
-            pages = bm.load_pages(root, "GetWonk/wonk-pilot")
+            pages = bm.load_pages(root, "DiegxR/wonk-pilot")
         self.assertEqual(len(pages), 1)
         self.assertEqual(pages[0]["page"], "runtime/wonk-pilot/arquitectura.md")
 
@@ -77,13 +77,13 @@ class TestFrontmatter(unittest.TestCase):
 class TestClasificacion(unittest.TestCase):
     def setUp(self):
         self.pages = [
-            {"page": "runtime/wonk-pilot/arquitectura.md", "fuente_repo": "GetWonk/wonk-pilot",
+            {"page": "runtime/wonk-pilot/arquitectura.md", "fuente_repo": "DiegxR/wonk-pilot",
              "commit_verificado": "abc1234", "estado": "verificado", "titulo": "Arquitectura",
              "rutas": ["src/pilot/app.py", "src/pilot/__init__.py"]},
-            {"page": "runtime/wonk-pilot/contratos.md", "fuente_repo": "GetWonk/wonk-pilot",
+            {"page": "runtime/wonk-pilot/contratos.md", "fuente_repo": "DiegxR/wonk-pilot",
              "commit_verificado": "abc1234", "estado": "verificado", "titulo": "Contratos",
              "rutas": ["src/pilot/calculo.py#L1-L30"]},
-            {"page": "runtime/wonk-pilot/como-probar.md", "fuente_repo": "GetWonk/wonk-pilot",
+            {"page": "runtime/wonk-pilot/como-probar.md", "fuente_repo": "DiegxR/wonk-pilot",
              "commit_verificado": "abc1234", "estado": "verificado", "titulo": "Como probar",
              "rutas": ["tests/test_calculo.py"]},
         ]

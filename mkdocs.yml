@@ -1,7 +1,7 @@
 site_name: Wonk Docs
 site_description: Documentación transversal de Wonk, mantenida viva por la tubería de documentación dinámica
-site_url: https://getwonk.github.io/wonk-docs/
-repo_url: https://github.com/GetWonk/wonk-docs
+site_url: https://diegxr.github.io/wonk-docs/
+repo_url: https://github.com/DiegxR/wonk-docs
 edit_uri: ""
 
 docs_dir: docs

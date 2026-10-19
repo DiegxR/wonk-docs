@@ -53,7 +53,7 @@ Ambos workflows aceptan `workflow_dispatch`:
 
 - En `wonk-pilot`: botón "Run workflow" con `force=true` envía el aviso aunque
   no haya rutas documentables.
-- En `wonk-docs`: botón "Run workflow" con `source_repo=GetWonk/wonk-pilot`
+- En `wonk-docs`: botón "Run workflow" con `source_repo=DiegxR/wonk-pilot`
   arma el manifiesto sin esperar al otro repo. Útil para depurar el clasificador.
 
 ## Cuando llegue la API key

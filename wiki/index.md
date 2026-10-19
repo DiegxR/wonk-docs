@@ -16,6 +16,6 @@ dependa de que alguien se acuerde.
 
 ## Reglas
 
-La regla de generación vive en [CLAUDE.md](https://github.com/GetWonk/wonk-docs/blob/main/CLAUDE.md).
+La regla de generación vive en [CLAUDE.md](https://github.com/DiegxR/wonk-docs/blob/main/CLAUDE.md).
 Resumen: el código manda, un dato tiene un solo hogar, nada escribe directo en
 `main`, y toda cita usa `blob/<sha>` nunca `blob/main`.

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Repositorio | `GetWonk/wonk-pilot` |
+| Repositorio | `DiegxR/wonk-pilot` |
 | Rama principal | `main` |
 | Dueño | Diego Rojas |
 | Papel | piloto mínimo para probar el disparador de documentación dinámica |
